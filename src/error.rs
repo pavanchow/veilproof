@@ -19,6 +19,10 @@ pub enum VeilproofError {
     /// The witness supplied to a prover did not satisfy the statement it was
     /// asked to prove (for example a value outside the claimed range).
     InvalidWitness(String),
+    /// The operating-system entropy source could not be read. Returned
+    /// instead of panicking so a consumer of this library is never crashed
+    /// out from under by a failed randomness read.
+    Entropy(String),
 }
 
 impl fmt::Display for VeilproofError {
@@ -30,6 +34,7 @@ impl fmt::Display for VeilproofError {
             VeilproofError::Deserialization(msg) => write!(f, "deserialization failed: {msg}"),
             VeilproofError::RangeTooLarge(msg) => write!(f, "range too large: {msg}"),
             VeilproofError::InvalidWitness(msg) => write!(f, "invalid witness: {msg}"),
+            VeilproofError::Entropy(msg) => write!(f, "entropy source failure: {msg}"),
         }
     }
 }

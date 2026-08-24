@@ -41,11 +41,21 @@ impl Transcript {
         self.append_bytes(&x.to_be_bytes());
     }
 
-    /// The Fiat-Shamir challenge: SHA-256 of the full transcript so far,
-    /// interpreted as a big-endian integer and reduced modulo q.
+    /// The Fiat-Shamir challenge: hash the transcript into a 512-bit value
+    /// with a one-byte domain-separating counter, then reduce modulo q.
+    /// Reducing a single 256-bit digest modulo the 256-bit prime q leaves a
+    /// measurable bias toward the low half of the range. Reducing a 512-bit
+    /// value instead shrinks that bias to about 2^-256, negligible, at the
+    /// cost of one extra SHA-256 call.
     pub fn challenge_scalar(&self) -> BigUint {
-        let digest = sha256(&self.buf);
-        BigUint::from_bytes_be(&digest) % group::q()
+        let mut b0 = self.buf.clone();
+        b0.push(0u8);
+        let mut b1 = self.buf.clone();
+        b1.push(1u8);
+        let mut wide = Vec::with_capacity(64);
+        wide.extend_from_slice(&sha256(&b0));
+        wide.extend_from_slice(&sha256(&b1));
+        BigUint::from_bytes_be(&wide) % group::q()
     }
 }
 

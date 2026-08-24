@@ -1,8 +1,7 @@
 use clap::{Parser, Subcommand};
 use num_bigint::BigUint;
-use veilproof::rng::OsRng;
+use veilproof::rng::{DeterministicRng, RngCore};
 use veilproof::serialize::ProofBytes;
-use veilproof::rng::RngCore;
 use veilproof::{bit_proof, chaum_pedersen, group, hexutil, range_proof, ring, schnorr};
 
 #[derive(Parser)]
@@ -69,7 +68,7 @@ fn main() {
 
 fn cmd_prove_dleq(secret: &str) {
     let x = parse_biguint_decimal(secret);
-    let mut rng = OsRng;
+    let mut rng = os_rng_or_exit();
     let (stmt, proof) = chaum_pedersen::prove(&x, &mut rng);
     println!("statement (y1 = g^x mod p, y2 = h^x mod p):");
     println!("  {}", stmt.to_hex());
@@ -108,7 +107,7 @@ fn cmd_verify_dleq(statement_hex: &str, proof_hex: &str) {
 }
 
 fn cmd_ring_demo(size: usize, index: usize) {
-    let mut rng = OsRng;
+    let mut rng = os_rng_or_exit();
     let p = group::p();
     let g = group::g();
 
@@ -152,6 +151,16 @@ fn cmd_ring_demo(size: usize, index: usize) {
     println!("the proof reveals membership, not the index. it is the same shape for any position.");
 }
 
+fn os_rng_or_exit() -> DeterministicRng {
+    match DeterministicRng::from_os() {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("veilproof: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
 fn parse_biguint_decimal(s: &str) -> BigUint {
     match BigUint::parse_bytes(s.as_bytes(), 10) {
         Some(v) => v,
@@ -164,7 +173,7 @@ fn parse_biguint_decimal(s: &str) -> BigUint {
 
 fn cmd_prove_dlog(secret: &str) {
     let x = parse_biguint_decimal(secret);
-    let mut rng = OsRng;
+    let mut rng = os_rng_or_exit();
     let (stmt, proof) = schnorr::prove(&x, &mut rng);
 
     println!("statement (y = g^x mod p):");
@@ -208,7 +217,7 @@ fn cmd_demo() {
     println!("veilproof demo: proving a committed value lies in a range, without revealing it");
     println!();
 
-    let mut rng = OsRng;
+    let mut rng = os_rng_or_exit();
     let secret_value = BigUint::from(2026u32);
     let n_bits = 16u32;
 

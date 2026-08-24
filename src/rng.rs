@@ -6,10 +6,12 @@
 //! same bytes every time. `OsRng` reads real entropy from the operating
 //! system and is what CLI commands use for actual nonces.
 
+use crate::error::VeilproofError;
 use crate::sha256::sha256;
 
-/// A source of random bytes. Implemented by both the deterministic test RNG
-/// and the OS-backed RNG used for real proofs.
+/// A source of random bytes, implemented by the deterministic hash DRBG. The
+/// DRBG cannot fail once seeded, so this stays infallible. Real entropy is
+/// pulled once, fallibly, when seeding from the OS (see `from_os`).
 pub trait RngCore {
     fn fill_bytes(&mut self, buf: &mut [u8]);
 }
@@ -34,6 +36,21 @@ impl DeterministicRng {
         }
     }
 
+    /// Seed the DRBG from 32 bytes of operating-system entropy. This is the
+    /// one place the crate touches the OS randomness source, and it does so
+    /// fallibly: a read failure comes back as a typed error, never a panic.
+    /// Every nonce a proof needs is then expanded deterministically from that
+    /// seed, so a single successful read backs a whole run.
+    pub fn from_os() -> Result<Self, VeilproofError> {
+        use std::io::Read;
+        let mut seed = [0u8; 32];
+        let mut f = std::fs::File::open("/dev/urandom")
+            .map_err(|e| VeilproofError::Entropy(format!("cannot open /dev/urandom: {e}")))?;
+        f.read_exact(&mut seed)
+            .map_err(|e| VeilproofError::Entropy(format!("cannot read OS entropy: {e}")))?;
+        Ok(DeterministicRng::from_seed(seed))
+    }
+
     fn next_block(&mut self) -> [u8; 32] {
         let mut input = Vec::with_capacity(40);
         input.extend_from_slice(&self.seed);
@@ -52,21 +69,6 @@ impl RngCore for DeterministicRng {
             buf[filled..filled + take].copy_from_slice(&block[..take]);
             filled += take;
         }
-    }
-}
-
-/// Real entropy from the operating system, read directly from
-/// `/dev/urandom`. No crate for this, plain file I/O. Unix-only, which is
-/// the honest limit of doing it this way without a dependency.
-pub struct OsRng;
-
-impl RngCore for OsRng {
-    fn fill_bytes(&mut self, buf: &mut [u8]) {
-        use std::io::Read;
-        let mut f =
-            std::fs::File::open("/dev/urandom").expect("veilproof: could not open /dev/urandom");
-        f.read_exact(buf)
-            .expect("veilproof: could not read OS randomness");
     }
 }
 

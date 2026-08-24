@@ -9,6 +9,11 @@ use crate::error::VeilproofError;
 use crate::hexutil;
 use num_bigint::BigUint;
 
+/// The largest byte length any single serialized field is allowed to declare.
+/// A 2048-bit element is 256 bytes, so 512 is a safe hard ceiling that still
+/// rejects the multi-gigabyte length prefixes a hostile input could carry.
+pub const MAX_FIELD_BYTES: usize = 512;
+
 pub struct Writer {
     buf: Vec<u8>,
 }
@@ -55,6 +60,15 @@ impl<'a> Reader<'a> {
 
     pub fn read_biguint(&mut self) -> Result<BigUint, VeilproofError> {
         let len = self.read_u32()? as usize;
+        // A group element or scalar in this 2048-bit group never exceeds 256
+        // bytes. Reject an oversized length prefix before touching the buffer,
+        // so a hostile serialized proof cannot ask the verifier to allocate
+        // and parse a multi-gigabyte integer. 512 leaves generous headroom.
+        if len > MAX_FIELD_BYTES {
+            return Err(VeilproofError::Deserialization(
+                "field length exceeds the maximum for a group element".to_string(),
+            ));
+        }
         if self.pos + len > self.data.len() {
             return Err(VeilproofError::Deserialization(
                 "buffer too short for declared field length".to_string(),
@@ -140,6 +154,18 @@ mod tests {
         bytes.truncate(bytes.len() - 1);
         let mut r = Reader::new(&bytes);
         assert!(r.read_biguint().is_err());
+    }
+
+    #[test]
+    fn reader_rejects_oversized_field_length() {
+        // A 4-byte length prefix claiming ~4 GB, with no payload behind it.
+        // The reader must reject on the size cap without trying to allocate.
+        let bytes = [0xFF, 0xFF, 0xFF, 0xFF];
+        let mut r = Reader::new(&bytes);
+        match r.read_biguint() {
+            Err(VeilproofError::Deserialization(msg)) => assert!(msg.contains("maximum")),
+            other => panic!("expected a size-cap rejection, got {other:?}"),
+        }
     }
 
     #[test]

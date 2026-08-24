@@ -11,6 +11,7 @@ use crate::error::VeilproofError;
 use crate::rng::RngCore;
 use crate::sha256::sha256;
 use num_bigint::BigUint;
+use std::sync::OnceLock;
 
 const P_HEX: &str = "\
 87A8E61DB4B6663CFFBBD19C651959998CEEF608660DD0F25D2CEED4435E3B00E00DF8F1D61957D4FAF7DF4561B2AA30\
@@ -49,23 +50,36 @@ fn hex_to_biguint(hex: &str) -> BigUint {
     BigUint::parse_bytes(hex.as_bytes(), 16).expect("veilproof: bad hardcoded group constant")
 }
 
+// The constants are parsed (and `h` derived) exactly once, then cloned out on
+// each call. Parsing the 2048-bit hex strings, and especially the modpow that
+// derives `h`, are far too expensive to repeat on every arithmetic operation,
+// and these values never change for the lifetime of the process.
+static P_CELL: OnceLock<BigUint> = OnceLock::new();
+static Q_CELL: OnceLock<BigUint> = OnceLock::new();
+static G_CELL: OnceLock<BigUint> = OnceLock::new();
+static H_CELL: OnceLock<BigUint> = OnceLock::new();
+
 pub fn p() -> BigUint {
-    hex_to_biguint(P_HEX)
+    P_CELL.get_or_init(|| hex_to_biguint(P_HEX)).clone()
 }
 
 pub fn q() -> BigUint {
-    hex_to_biguint(Q_HEX)
+    Q_CELL.get_or_init(|| hex_to_biguint(Q_HEX)).clone()
 }
 
 pub fn g() -> BigUint {
-    hex_to_biguint(G_HEX)
+    G_CELL.get_or_init(|| hex_to_biguint(G_HEX)).clone()
 }
 
 /// The second Pedersen generator, `h = g^s mod p` where `s = SHA256(H_DOMAIN_SEPARATOR) mod q`.
 pub fn h() -> BigUint {
-    let digest = sha256(H_DOMAIN_SEPARATOR);
-    let s = BigUint::from_bytes_be(&digest) % q();
-    g().modpow(&s, &p())
+    H_CELL
+        .get_or_init(|| {
+            let digest = sha256(H_DOMAIN_SEPARATOR);
+            let s = BigUint::from_bytes_be(&digest) % q();
+            g().modpow(&s, &p())
+        })
+        .clone()
 }
 
 /// The multiplicative inverse, inside the order-`q` subgroup, of a subgroup
