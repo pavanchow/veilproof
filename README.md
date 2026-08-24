@@ -118,4 +118,4 @@ assert!(schnorr::verify(&statement, &proof).unwrap());
 
 `docs/index.html` is a self-contained, dependency-free port of the same math to JavaScript, using native `BigInt`, the same group constants, the same hand-written SHA-256, and the same Fiat-Shamir logic. A proof produced in the browser verifies by the same equations as a proof produced by the Rust code, and vice versa.
 
-By Pavan Nallamothu.
+By Pavan Nallamothu (pavanchow).

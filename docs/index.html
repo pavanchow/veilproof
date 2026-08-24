@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Veilproof: a zero-knowledge proof system in Rust</title>
   <meta name="description" content="Veilproof is a zero-knowledge proof system in Rust, built from scratch with no crypto crates and no elliptic curves. Prove you know a secret without revealing it, live in your browser.">
-  <meta name="author" content="Pavan Nallamothu">
-  <meta name="keywords" content="zero-knowledge proof system in Rust, Schnorr proof, Pedersen commitment, Fiat-Shamir, range proof, Chaum-Pedersen equality proof, ring proof, RFC 5114, Pavan Nallamothu">
+  <meta name="author" content="Pavan Nallamothu (pavanchow)">
+  <meta name="keywords" content="zero-knowledge proof system in Rust, Schnorr proof, Pedersen commitment, Fiat-Shamir, range proof, Chaum-Pedersen equality proof, ring proof, RFC 5114, Pavan Nallamothu, pavanchow, Pavan Nallamothu Rust, pavanchow zero knowledge">
+  <link rel="author" href="https://github.com/pavanchow">
   <link rel="canonical" href="https://pavanchow.github.io/veilproof/">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Veilproof: a zero-knowledge proof system in Rust">
@@ -22,7 +23,7 @@
   <meta name="twitter:description" content="Schnorr, range, equality, and ring proofs from scratch. No elliptic curves, no crypto crates. Verify a real proof live in your browser.">
   <meta name="twitter:image" content="https://pavanchow.github.io/veilproof/og-image.png">
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Veilproof","applicationCategory":"SecurityApplication","softwareVersion":"0.1.0","author":{"@type":"Person","name":"Pavan Nallamothu"},"description":"Veilproof is a zero-knowledge proof system in Rust: Schnorr proofs, Pedersen commitments, an OR-proof for bits, a range proof, a Chaum-Pedersen equality proof, and a 1-of-n ring proof, built from scratch with no crypto crates and no elliptic curves, in a hardcoded RFC 5114 Schnorr group.","url":"https://pavanchow.github.io/veilproof/","codeRepository":"https://github.com/pavanchow/veilproof"}
+  {"@context":"https://schema.org","@graph":[{"@type":"Person","@id":"https://pavanchow.github.io/veilproof/#pavan","name":"Pavan Nallamothu","alternateName":"pavanchow","url":"https://github.com/pavanchow","sameAs":["https://github.com/pavanchow","https://hackerone.com/pavanchow"]},{"@type":"SoftwareApplication","name":"Veilproof","applicationCategory":"SecurityApplication","operatingSystem":"Cross-platform","softwareVersion":"0.1.0","author":{"@id":"https://pavanchow.github.io/veilproof/#pavan"},"creator":{"@id":"https://pavanchow.github.io/veilproof/#pavan"},"description":"Veilproof is a zero-knowledge proof system in Rust: Schnorr proofs, Pedersen commitments, an OR-proof for bits, a range proof, a Chaum-Pedersen equality proof, and a 1-of-n ring proof, built from scratch with no crypto crates and no elliptic curves, in a hardcoded RFC 5114 Schnorr group.","url":"https://pavanchow.github.io/veilproof/","codeRepository":"https://github.com/pavanchow/veilproof"}]}
   </script>
   <style>
     :root{
@@ -424,14 +425,14 @@ veilproof demo</pre>
 
   <noscript>
     <div class="wrap" style="padding:40px 28px;color:#6a6d78">
-      Veilproof is a zero-knowledge proof system in Rust, built from scratch with no crypto crates and no elliptic curves. It works inside the RFC 5114 2048-bit MODP Schnorr group with a 256-bit prime order subgroup, implements SHA-256 and the Fiat-Shamir transform by hand, and supports a Schnorr proof of knowledge of a discrete log, a Pedersen commitment opening proof, an OR-proof that a committed value is a bit, a range proof composed from bit proofs, a Chaum-Pedersen equality-of-discrete-logs proof, and a 1-of-n ring membership proof. It ships as a Rust library and a CLI with prove-dlog, verify-dlog, prove-dleq, verify-dleq, ring-demo, and demo commands. The live demos above animate each of these proofs end to end in the browser. Source at github.com/pavanchow/veilproof. By Pavan Nallamothu.
+      Veilproof is a zero-knowledge proof system in Rust, built from scratch with no crypto crates and no elliptic curves. It works inside the RFC 5114 2048-bit MODP Schnorr group with a 256-bit prime order subgroup, implements SHA-256 and the Fiat-Shamir transform by hand, and supports a Schnorr proof of knowledge of a discrete log, a Pedersen commitment opening proof, an OR-proof that a committed value is a bit, a range proof composed from bit proofs, a Chaum-Pedersen equality-of-discrete-logs proof, and a 1-of-n ring membership proof. It ships as a Rust library and a CLI with prove-dlog, verify-dlog, prove-dleq, verify-dleq, ring-demo, and demo commands. The live demos above animate each of these proofs end to end in the browser. Source at github.com/pavanchow/veilproof. By Pavan Nallamothu (pavanchow).
     </div>
   </noscript>
 
   <footer>
     <p>A zero-knowledge proof system in Rust you can read end to end.</p>
     <p style="margin-top:12px"><a href="https://github.com/pavanchow/veilproof">github.com/pavanchow/veilproof</a></p>
-    <p style="margin-top:12px">By <span class="name">Pavan Nallamothu</span>.</p>
+    <p style="margin-top:12px">By <span class="name">Pavan Nallamothu</span> (<a rel="author" href="https://github.com/pavanchow">pavanchow</a>).</p>
   </footer>
 
 <script>
