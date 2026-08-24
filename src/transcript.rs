@@ -41,6 +41,13 @@ impl Transcript {
         self.append_bytes(&x.to_be_bytes());
     }
 
+    /// The exact byte buffer that gets hashed to derive the challenge, before
+    /// any hashing or reduction. Exposed so the CLI tracer can show a student
+    /// precisely what canonicalized bytes feed Fiat-Shamir at each step.
+    pub fn input_bytes(&self) -> Vec<u8> {
+        self.buf.clone()
+    }
+
     /// The Fiat-Shamir challenge: hash the transcript into a 512-bit value
     /// with a one-byte domain-separating counter, then reduce modulo q.
     /// Reducing a single 256-bit digest modulo the 256-bit prime q leaves a

@@ -17,9 +17,43 @@ enum Command {
     ProveDlog {
         #[arg(long)]
         secret: String,
+        /// Print the exact byte array fed to SHA-256 at the Fiat-Shamir step,
+        /// before reduction, so the canonicalization is fully visible.
+        #[arg(long)]
+        trace: bool,
     },
     /// Verify a Schnorr discrete-log proof.
     VerifyDlog {
+        #[arg(long)]
+        statement: String,
+        #[arg(long)]
+        proof: String,
+    },
+    /// Prove a committed value lies in [0, 2^bits). Prints the statement and
+    /// proof as hex, with the value and blinding withheld.
+    ProveRange {
+        #[arg(long)]
+        value: String,
+        #[arg(long, default_value_t = 16)]
+        bits: u32,
+    },
+    /// Verify a range proof.
+    VerifyRange {
+        #[arg(long)]
+        statement: String,
+        #[arg(long)]
+        proof: String,
+    },
+    /// Build a ring of `size` keys, prove membership at `index`, and print the
+    /// ring statement and proof as hex. The proof does not reveal the index.
+    ProveRing {
+        #[arg(long, default_value_t = 5)]
+        size: usize,
+        #[arg(long, default_value_t = 2)]
+        index: usize,
+    },
+    /// Verify a ring membership proof.
+    VerifyRing {
         #[arg(long)]
         statement: String,
         #[arg(long)]
@@ -57,8 +91,12 @@ fn main() {
 
     let cli = Cli::parse();
     match cli.command {
-        Command::ProveDlog { secret } => cmd_prove_dlog(&secret),
+        Command::ProveDlog { secret, trace } => cmd_prove_dlog(&secret, trace),
         Command::VerifyDlog { statement, proof } => cmd_verify_dlog(&statement, &proof),
+        Command::ProveRange { value, bits } => cmd_prove_range(&value, bits),
+        Command::VerifyRange { statement, proof } => cmd_verify_range(&statement, &proof),
+        Command::ProveRing { size, index } => cmd_prove_ring(size, index),
+        Command::VerifyRing { statement, proof } => cmd_verify_ring(&statement, &proof),
         Command::ProveDleq { secret } => cmd_prove_dleq(&secret),
         Command::VerifyDleq { statement, proof } => cmd_verify_dleq(&statement, &proof),
         Command::RingDemo { size, index } => cmd_ring_demo(size, index),
@@ -171,17 +209,149 @@ fn parse_biguint_decimal(s: &str) -> BigUint {
     }
 }
 
-fn cmd_prove_dlog(secret: &str) {
+fn cmd_prove_dlog(secret: &str, trace: bool) {
     let x = parse_biguint_decimal(secret);
     let mut rng = os_rng_or_exit();
-    let (stmt, proof) = schnorr::prove(&x, &mut rng);
+    let (stmt, proof, tr) = schnorr::prove_traced(&x, &mut rng);
 
     println!("statement (y = g^x mod p):");
     println!("  {}", stmt.to_hex());
     println!("proof (t, z):");
     println!("  {}", proof.to_hex());
+
+    if trace {
+        let buf = tr.transcript_bytes;
+        println!();
+        println!("--- Fiat-Shamir trace (schnorr-dlog-v1) ---");
+        println!(
+            "the {} bytes below are hashed to derive the challenge. every field is",
+            buf.len()
+        );
+        println!("length-prefixed, so the boundaries between g, y, and t cannot slide.");
+        println!("transcript input bytes (hex):");
+        println!("  {}", hexutil::encode(&buf));
+        let mut b0 = buf.clone();
+        b0.push(0u8);
+        let mut b1 = buf.clone();
+        b1.push(1u8);
+        println!("block 0 = SHA256(transcript || 0x00): {}", hexutil::encode(&veilproof::sha256::sha256(&b0)));
+        println!("block 1 = SHA256(transcript || 0x01): {}", hexutil::encode(&veilproof::sha256::sha256(&b1)));
+        println!("challenge c = (block0 || block1) mod q, then z = k + c*x mod q.");
+    }
     println!();
     println!("share the statement and proof, never the secret.");
+}
+
+fn cmd_prove_range(value: &str, bits: u32) {
+    let m = parse_biguint_decimal(value);
+    let mut rng = os_rng_or_exit();
+    match range_proof::prove(&m, bits, &mut rng) {
+        Ok((stmt, proof, _blinding)) => {
+            println!("statement (commitment C and bit width n):");
+            println!("  {}", stmt.to_hex());
+            println!("proof (bit commitments and OR-proofs):");
+            println!("  {}", proof.to_hex());
+            println!();
+            println!("the value and its blinding are withheld. the proof shows only that C opens to a value in [0, 2^{bits}).");
+        }
+        Err(e) => {
+            eprintln!("veilproof: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
+fn cmd_verify_range(statement_hex: &str, proof_hex: &str) {
+    let stmt = match range_proof::RangeStatement::from_hex(statement_hex) {
+        Ok(s) => s,
+        Err(e) => {
+            println!("reject: could not decode statement: {e}");
+            std::process::exit(1);
+        }
+    };
+    let proof = match range_proof::RangeProof::from_hex(proof_hex) {
+        Ok(p) => p,
+        Err(e) => {
+            println!("reject: could not decode proof: {e}");
+            std::process::exit(1);
+        }
+    };
+    match range_proof::verify(&stmt, &proof) {
+        Ok(true) => println!("accept"),
+        Ok(false) => {
+            println!("reject");
+            std::process::exit(1);
+        }
+        Err(e) => {
+            println!("reject: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
+fn cmd_prove_ring(size: usize, index: usize) {
+    if size == 0 || index >= size {
+        eprintln!("veilproof: need size >= 1 and 0 <= index < size");
+        std::process::exit(2);
+    }
+    let mut rng = os_rng_or_exit();
+    let p = group::p();
+    let g = group::g();
+
+    let mut secret = BigUint::from(0u32);
+    let mut ys = Vec::with_capacity(size);
+    for i in 0..size {
+        let mut buf = [0u8; 32];
+        rng.fill_bytes(&mut buf);
+        let xi = BigUint::from_bytes_be(&buf) % group::q();
+        if i == index {
+            secret = xi.clone();
+        }
+        ys.push(g.modpow(&xi, &p));
+    }
+
+    match ring::prove(&secret, index, &ys, &mut rng) {
+        Ok((stmt, proof)) => {
+            println!("statement (the public ring of {size} keys):");
+            println!("  {}", stmt.to_hex());
+            println!("proof (per-branch commitments, challenge shares, responses):");
+            println!("  {}", proof.to_hex());
+            println!();
+            println!("the proof shows membership in the ring. it does not reveal which key was yours.");
+        }
+        Err(e) => {
+            eprintln!("veilproof: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
+fn cmd_verify_ring(statement_hex: &str, proof_hex: &str) {
+    let stmt = match ring::RingStatement::from_hex(statement_hex) {
+        Ok(s) => s,
+        Err(e) => {
+            println!("reject: could not decode statement: {e}");
+            std::process::exit(1);
+        }
+    };
+    let proof = match ring::RingProof::from_hex(proof_hex) {
+        Ok(p) => p,
+        Err(e) => {
+            println!("reject: could not decode proof: {e}");
+            std::process::exit(1);
+        }
+    };
+    match ring::verify(&stmt, &proof) {
+        Ok(true) => println!("accept"),
+        Ok(false) => {
+            println!("reject");
+            std::process::exit(1);
+        }
+        Err(e) => {
+            println!("reject: {e}");
+            std::process::exit(1);
+        }
+    }
 }
 
 fn cmd_verify_dlog(statement_hex: &str, proof_hex: &str) {

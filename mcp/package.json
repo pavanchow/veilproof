@@ -1,0 +1,25 @@
+{
+  "name": "veilproof-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing Veilproof zero-knowledge proof verifiers to AI agents",
+  "type": "module",
+  "bin": {
+    "veilproof-mcp": "index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "zero-knowledge",
+    "zk-proofs",
+    "schnorr",
+    "verifier"
+  ],
+  "author": "Pavan Nallamothu",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

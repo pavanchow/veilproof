@@ -52,6 +52,40 @@ pub fn prove(x: &BigUint, rng: &mut impl RngCore) -> (DlogStatement, DlogProof) 
     (DlogStatement { y }, DlogProof { t, z })
 }
 
+/// The raw Fiat-Shamir input for a Schnorr proof: the exact bytes hashed to
+/// derive the challenge. Returned alongside the proof so a tracer can show a
+/// student the canonicalized transcript that pins the challenge.
+pub struct DlogTrace {
+    pub transcript_bytes: Vec<u8>,
+}
+
+/// Like `prove`, but also returns the exact transcript bytes fed to the
+/// Fiat-Shamir hash, for the `--trace` teaching output. The proof itself is
+/// identical to what `prove` would produce from the same rng.
+pub fn prove_traced(
+    x: &BigUint,
+    rng: &mut impl RngCore,
+) -> (DlogStatement, DlogProof, DlogTrace) {
+    let p = group::p();
+    let g = group::g();
+    let x = group::reduce_scalar(x);
+
+    let y = g.modpow(&x, &p);
+    let k = group::random_scalar(rng);
+    let t = g.modpow(&k, &p);
+
+    let tr = build_transcript(&y, &t);
+    let transcript_bytes = tr.input_bytes();
+    let c = tr.challenge_scalar();
+    let z = (&k + &c * &x) % group::q();
+
+    (
+        DlogStatement { y },
+        DlogProof { t, z },
+        DlogTrace { transcript_bytes },
+    )
+}
+
 /// Verify a Schnorr proof of knowledge of a discrete log. Never panics:
 /// malformed or out-of-group values are rejected as typed errors.
 pub fn verify(stmt: &DlogStatement, proof: &DlogProof) -> Result<bool, VeilproofError> {
