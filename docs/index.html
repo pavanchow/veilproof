@@ -1,12 +1,811 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>veilproof</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Veilproof: a zero-knowledge proof system in Rust</title>
+  <meta name="description" content="Veilproof is a zero-knowledge proof system in Rust, built from scratch with no crypto crates and no elliptic curves. Prove you know a secret without revealing it, live in your browser.">
+  <meta name="author" content="Pavan Nallamothu">
+  <meta name="keywords" content="zero-knowledge proof system in Rust, Schnorr proof, Pedersen commitment, Fiat-Shamir, range proof, Chaum-Pedersen equality proof, ring proof, RFC 5114, Pavan Nallamothu">
+  <link rel="canonical" href="https://pavanchow.github.io/veilproof/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Veilproof: a zero-knowledge proof system in Rust">
+  <meta property="og:description" content="A zero-knowledge proof system in Rust, built from scratch with no crypto crates and no elliptic curves. Try a real Schnorr proof and a range proof live in the browser.">
+  <meta property="og:url" content="https://pavanchow.github.io/veilproof/">
+  <meta property="og:site_name" content="Veilproof">
+  <meta name="twitter:card" content="summary">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Veilproof","applicationCategory":"SecurityApplication","softwareVersion":"0.1.0","author":{"@type":"Person","name":"Pavan Nallamothu"},"description":"Veilproof is a zero-knowledge proof system in Rust: Schnorr proofs, Pedersen commitments, an OR-proof for bits, a range proof, a Chaum-Pedersen equality proof, and a 1-of-n ring proof, built from scratch with no crypto crates and no elliptic curves, in a hardcoded RFC 5114 Schnorr group.","url":"https://pavanchow.github.io/veilproof/","codeRepository":"https://github.com/pavanchow/veilproof"}
+  </script>
+  <style>
+    :root{
+      --accent:#6d3fc0;--accent-soft:#f1eafb;
+      --ink:#15161c;--muted:#6a6d78;--faint:#9a9dab;
+      --line:#ececed;--panel:#f7f7f9;--panel2:#fbfbfd;
+      --ok:#0a7d43;--bad:#d70015;
+      --mono:ui-monospace,SFMono-Regular,Menlo,"SF Mono",monospace;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{background:#fff;color:var(--ink);
+      font:17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+      -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+    .wrap{max-width:1040px;margin:0 auto;padding:0 28px}
+    a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+
+    nav{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.82);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line)}
+    nav .row{display:flex;justify-content:space-between;align-items:center;height:56px;max-width:1040px;margin:0 auto;padding:0 28px}
+    nav .brand{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:650;letter-spacing:-.01em}
+    nav .brand .gem{width:16px;height:16px;transform:rotate(45deg);border-radius:3px;background:linear-gradient(135deg,#b79af0,#6d3fc0)}
+    nav .links{display:flex;gap:26px;align-items:center}
+    nav .links a{color:var(--ink);font-size:14.5px}
+    nav .v{color:var(--faint);font-family:var(--mono);font-size:12px}
+    @media(max-width:640px){nav .links a:not(.gh){display:none}}
+
+    .hero{padding:70px 0 30px;text-align:center}
+    .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+    h1{font-size:clamp(38px,6.6vw,66px);line-height:1.05;letter-spacing:-.035em;font-weight:680;margin:18px 0 0}
+    .hero p.sub{max-width:640px;margin:24px auto 0;font-size:clamp(17px,2.1vw,21px);color:var(--muted)}
+    .cta{display:flex;gap:14px;justify-content:center;margin-top:38px;flex-wrap:wrap}
+    .btn{display:inline-block;padding:12px 24px;border-radius:980px;font-weight:600;font-size:15px}
+    .btn:hover{text-decoration:none}
+    .btn.p{background:var(--ink);color:#fff}
+    .btn.p:hover{background:var(--accent)}
+    .btn.s{border:1px solid var(--line);color:var(--ink)}
+    .btn.s:hover{border-color:var(--ink)}
+
+    .stage{max-width:960px;margin:44px auto 0;padding:0 28px}
+    .card{position:relative;background:linear-gradient(180deg,#fbfaff,#f6f2fc);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 1px 0 #fff inset,0 18px 50px -30px rgba(60,20,90,.3);padding:28px;margin-bottom:24px}
+    .card h3{font-size:19px;margin-bottom:6px}
+    .card .desc{color:var(--muted);font-size:15px;margin-bottom:18px}
+
+    .field{margin-bottom:14px}
+    .field label{display:block;font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+    .row2{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+    @media(max-width:640px){.row2{grid-template-columns:1fr}}
+    input[type=text],input[type=number]{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:12px;
+      padding:11px 14px;font-family:var(--mono);font-size:13.5px;color:var(--ink)}
+    input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px rgba(109,63,192,.12)}
+    .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+    .go{cursor:pointer;padding:11px 22px;border-radius:980px;border:none;background:var(--accent);color:#fff;font-weight:600;font-size:14.5px}
+    .go:hover{background:#5b32a3}
+    .go.secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}
+    .go.secondary:hover{border-color:var(--ink);background:var(--panel)}
+    .go.warn{background:#fff;color:var(--bad);border:1px solid #f3c9cd}
+    .go.warn:hover{background:#fff5f6;border-color:var(--bad)}
+    .toggle{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+
+    .out{margin-top:18px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:18px 20px;font-family:var(--mono);font-size:12.5px;overflow-x:auto;word-break:break-all}
+    .out .lbl{color:var(--faint);text-transform:uppercase;font-size:10.5px;letter-spacing:.05em;margin-top:12px;display:block}
+    .out .lbl:first-child{margin-top:0}
+    .out pre{white-space:pre-wrap;word-break:break-all;font-family:var(--mono);font-size:12px;color:var(--ink);margin-top:4px}
+    .verdict{margin-top:18px;font-family:var(--mono);font-size:14px;padding:12px 16px;border-radius:12px}
+    .verdict.ok{background:#e5f7ec;color:var(--ok)}
+    .verdict.bad{background:#fdeaec;color:var(--bad)}
+    .verdict.idle{background:var(--panel);color:var(--muted)}
+    .note{margin-top:14px;font-size:13.5px;color:var(--muted);background:var(--accent-soft);border-radius:12px;padding:12px 16px}
+    .self-check{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:14px;text-align:center}
+    .self-check.ok{color:var(--ok)}
+    .self-check.bad{color:var(--bad)}
+
+    section{padding:92px 0;border-top:1px solid var(--line)}
+    h2{font-size:clamp(27px,4.2vw,42px);line-height:1.12;letter-spacing:-.025em;font-weight:660;text-align:center;max-width:780px;margin:0 auto}
+    .lead{max-width:640px;margin:22px auto 0;text-align:center;color:var(--muted);font-size:18px}
+
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:900px;margin:48px auto 0}
+    @media(max-width:720px){.steps{grid-template-columns:1fr}}
+    .step{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:24px}
+    .step .n{display:inline-flex;width:28px;height:28px;border-radius:8px;background:var(--accent-soft);color:var(--accent);align-items:center;justify-content:center;font:700 13px var(--mono);margin-bottom:12px}
+    .step h3{font-size:17px;margin-bottom:6px}.step p{color:var(--muted);font-size:15px}
+
+    .rows{max-width:820px;margin:44px auto 0}
+    .rows .r{display:grid;grid-template-columns:minmax(150px,1fr) 2fr;gap:14px 38px;padding:24px 0;border-top:1px solid var(--line)}
+    .rows .r:first-child{border-top:none}
+    .rows .r b{font-size:18px}.rows .r p{color:var(--muted)}
+    @media(max-width:640px){.rows .r{grid-template-columns:1fr;gap:6px}}
+
+    pre.code{background:#15161c;color:#ececf4;border-radius:14px;padding:20px 22px;font-family:var(--mono);font-size:13.5px;overflow-x:auto;max-width:640px;margin:40px auto 0}
+    pre.code .c{color:#8a8d9a}
+
+    footer{padding:64px 0;border-top:1px solid var(--line);text-align:center;color:var(--muted)}
+    footer .name{color:var(--ink);font-weight:600}
+  </style>
 </head>
 <body>
-<h1>veilproof</h1>
-<p>Site coming soon.</p>
-<p><a href="https://github.com/pavanchow/veilproof">View repository</a></p>
+  <nav><div class="row">
+    <div class="brand"><span class="gem"></span>Veilproof</div>
+    <div class="links">
+      <a href="#try">Demo</a><a href="#how">How it works</a><a href="#source">Source</a>
+      <a class="gh" href="https://github.com/pavanchow/veilproof">GitHub</a>
+      <span class="v">v0.1.0</span>
+    </div>
+  </div></nav>
+
+  <div class="hero">
+    <p class="eyebrow">Rust &middot; RFC 5114 Schnorr group &middot; no crypto crates &middot; no curves</p>
+    <h1>A zero-knowledge proof system<br>you can read end to end.</h1>
+    <p class="sub">Veilproof proves you know a secret, or that a hidden number satisfies a property, without ever revealing it. SHA-256, the Fiat-Shamir transform, and every Sigma protocol are written from scratch. No black box. Here is the real math, running in your browser.</p>
+    <div class="cta">
+      <a class="btn p" href="#try">Try it live</a>
+      <a class="btn s" href="https://github.com/pavanchow/veilproof">View on GitHub</a>
+    </div>
+  </div>
+
+  <div id="try" class="stage">
+
+    <div class="card">
+      <h3>Prove you know a secret</h3>
+      <p class="desc">Pick a secret x. The page computes y = g<sup>x</sup> mod p and proves knowledge of x with a Schnorr proof, without ever putting x itself in the proof.</p>
+      <div class="row2">
+        <div class="field"><label for="secretX">Secret x</label><input type="text" id="secretX" value="20260823"></div>
+        <div class="field"><label for="&nbsp;">&nbsp;</label>
+          <label class="toggle"><input type="checkbox" id="lieToggle"> lie: use a different x when proving</label>
+        </div>
+      </div>
+      <div class="bar">
+        <button class="go" id="proveDlogBtn" type="button">Generate proof</button>
+      </div>
+
+      <div class="out" id="dlogOut" style="display:none">
+        <span class="lbl">Statement y = g^x mod p</span>
+        <pre id="dlogY"></pre>
+        <span class="lbl">Transcript commitment t</span>
+        <pre id="dlogT"></pre>
+        <span class="lbl">Challenge c = H(g, y, t) mod q</span>
+        <pre id="dlogC"></pre>
+        <span class="lbl">Response z = k + c&middot;x mod q</span>
+        <pre id="dlogZ"></pre>
+      </div>
+      <div class="verdict idle" id="dlogVerdict">Generate a proof to see the verifier's verdict.</div>
+      <p class="note" id="dlogZkNote"></p>
+    </div>
+
+    <div class="card">
+      <h3>Range proof: prove a number is in range, without saying what it is</h3>
+      <p class="desc">Pick a secret value from 0 to 255. The page commits to it with Pedersen commitments, decomposes it into 8 bits, proves every bit is honestly 0 or 1 with an OR-proof, and ties the bits back to the commitment. The verifier accepts the range claim without ever learning the value.</p>
+      <div class="row2">
+        <div class="field"><label for="rangeVal">Secret value (0&ndash;255)</label><input type="number" id="rangeVal" min="0" max="255" value="173"></div>
+        <div class="field"><label for="&nbsp;">&nbsp;</label>
+          <label class="toggle"><input type="checkbox" id="rangeLieToggle"> lie: forge a bit after committing</label>
+        </div>
+      </div>
+      <div class="bar">
+        <button class="go secondary" id="proveRangeBtn" type="button">Generate range proof</button>
+      </div>
+      <div class="out" id="rangeOut" style="display:none">
+        <span class="lbl">Commitment C = g^m &middot; h^r mod p</span>
+        <pre id="rangeC"></pre>
+        <span class="lbl">8 bit commitments (each with its own OR-proof)</span>
+        <pre id="rangeBits"></pre>
+      </div>
+      <div class="verdict idle" id="rangeVerdict">Generate a range proof to see the verifier's verdict.</div>
+    </div>
+
+    <div class="card">
+      <h3>Equality proof: show two public values share one secret</h3>
+      <p class="desc">Chaum-Pedersen. From a single secret x the page publishes y1 = g^x and y2 = h^x on two different bases, then proves the same x sits behind both, without revealing x. This is the check behind honest re-encryption and verifiable shuffles. Toggle the lie to compute the response from a different x and watch the two equations stop agreeing.</p>
+      <div class="row2">
+        <div class="field"><label for="dleqX">Secret x</label><input type="text" id="dleqX" value="31337"></div>
+        <div class="field"><label for="&nbsp;">&nbsp;</label>
+          <label class="toggle"><input type="checkbox" id="dleqLieToggle"> lie: respond as a different x</label>
+        </div>
+      </div>
+      <div class="bar">
+        <button class="go secondary" id="proveDleqBtn" type="button">Generate equality proof</button>
+      </div>
+      <div class="out" id="dleqOut" style="display:none">
+        <span class="lbl">y1 = g^x mod p</span>
+        <pre id="dleqY1"></pre>
+        <span class="lbl">y2 = h^x mod p</span>
+        <pre id="dleqY2"></pre>
+        <span class="lbl">response z (one z, both equations)</span>
+        <pre id="dleqZ"></pre>
+      </div>
+      <div class="verdict idle" id="dleqVerdict">Generate an equality proof to see the verifier's verdict.</div>
+    </div>
+
+    <div class="card">
+      <h3>Ring proof: prove you are one of the group, not which one</h3>
+      <p class="desc">A ring of public keys is generated and the page proves knowledge of the secret behind exactly one of them, chosen below, without revealing which. This is the anonymity primitive behind ring signatures. The proof has the same shape whichever position is real, so it cannot leak the index. Try the forge toggle to prove membership while holding no secret at all, and watch it fail.</p>
+      <div class="row2">
+        <div class="field"><label for="ringSize">Ring size (1&ndash;16)</label><input type="number" id="ringSize" min="1" max="16" value="5"></div>
+        <div class="field"><label for="ringIndex">Your position</label><input type="number" id="ringIndex" min="0" max="15" value="2"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="&nbsp;">&nbsp;</label>
+          <label class="toggle"><input type="checkbox" id="ringForgeToggle"> forge: prove membership holding no secret</label>
+        </div>
+      </div>
+      <div class="bar">
+        <button class="go secondary" id="proveRingBtn" type="button">Generate ring proof</button>
+      </div>
+      <div class="out" id="ringOut" style="display:none">
+        <span class="lbl">public ring</span>
+        <pre id="ringKeys"></pre>
+      </div>
+      <div class="verdict idle" id="ringVerdict">Generate a ring proof to see the verifier's verdict.</div>
+    </div>
+
+    <p class="self-check" id="selfCheck">running g^q mod p == 1 self-check and a sample proof verification&hellip;</p>
+  </div>
+
+  <section id="how">
+    <h2>How it works</h2>
+    <p class="lead">Every step below is code you can read, no dependency does the cryptography for you.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>A fixed group</h3><p>All arithmetic happens mod a 2048-bit RFC 5114 prime, inside the 256-bit prime-order subgroup generated by g, self-checked on load.</p></div>
+      <div class="step"><div class="n">2</div><h3>SHA-256</h3><p>The compression function, message schedule, and padding are written from the FIPS 180-4 spec, no crates, matching a known-answer vector.</p></div>
+      <div class="step"><div class="n">3</div><h3>Fiat-Shamir</h3><p>The verifier's random challenge becomes a SHA-256 hash of the full transcript and statement, reduced mod q, so no interaction is needed.</p></div>
+      <div class="step"><div class="n">4</div><h3>Schnorr proof</h3><p>Knowledge of a discrete log x is proven with a commitment t, a challenge c, and a response z, checked by g^z == t &middot; y^c.</p></div>
+      <div class="step"><div class="n">5</div><h3>OR-proof</h3><p>A bit commitment is proven to open to 0 or 1 by genuinely proving the true branch and simulating the false one.</p></div>
+      <div class="step"><div class="n">6</div><h3>Range proof</h3><p>n bit proofs, tied back to one commitment through the Pedersen homomorphism, prove a value lies in [0, 2^n) bit by bit.</p></div>
+    </div>
+  </section>
+
+  <section id="source">
+    <h2>Same math, two surfaces.</h2>
+    <div class="rows">
+      <div class="r"><b>CLI &amp; library</b><p><code>veilproof prove-dlog</code>, <code>verify-dlog</code>, and <code>demo</code>, plus a plain Rust library with typed errors, never a panic.</p></div>
+      <div class="r"><b>Browser</b><p>The demo above is the same p, q, g, h, the same hand-written SHA-256, and the same Fiat-Shamir logic, ported to JavaScript with native BigInt.</p></div>
+      <div class="r"><b>Tests</b><p><code>cargo test</code> checks completeness, soundness against wrong witnesses and tampered bytes, determinism, and that the witness never appears in a serialized proof.</p></div>
+    </div>
+    <pre class="code"><span class="c"># prove knowledge of a secret</span>
+veilproof prove-dlog --secret 424242
+
+<span class="c"># verify it</span>
+veilproof verify-dlog --statement &lt;hex&gt; --proof &lt;hex&gt;
+
+<span class="c"># run the full range-proof demo</span>
+veilproof demo</pre>
+  </section>
+
+  <noscript>
+    <div class="wrap" style="padding:40px 28px;color:#6a6d78">
+      Veilproof is a zero-knowledge proof system in Rust, built from scratch with no crypto crates and no elliptic curves. It works inside the RFC 5114 2048-bit MODP Schnorr group with a 256-bit prime order subgroup, implements SHA-256 and the Fiat-Shamir transform by hand, and supports a Schnorr proof of knowledge of a discrete log, a Pedersen commitment opening proof, an OR-proof that a committed value is a bit, a range proof composed from bit proofs, a Chaum-Pedersen equality-of-discrete-logs proof, and a 1-of-n ring membership proof. It ships as a Rust library and a CLI with prove-dlog, verify-dlog, prove-dleq, verify-dleq, ring-demo, and demo commands. Source at github.com/pavanchow/veilproof. By Pavan Nallamothu.
+    </div>
+  </noscript>
+
+  <footer>
+    <p>A zero-knowledge proof system in Rust you can read end to end.</p>
+    <p style="margin-top:12px"><a href="https://github.com/pavanchow/veilproof">github.com/pavanchow/veilproof</a></p>
+    <p style="margin-top:12px">By <span class="name">Pavan Nallamothu</span>.</p>
+  </footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- sha256.rs, ported ----
+  const K = [
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+  ];
+  const H0 = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+
+  function rotr(x,n){ return (x>>>n) | (x<<(32-n)); }
+
+  function sha256(bytes){
+    const bitLen = bytes.length * 8;
+    let padLen = bytes.length + 1;
+    while (padLen % 64 !== 56) padLen++;
+    const total = padLen + 8;
+    const buf = new Uint8Array(total);
+    buf.set(bytes, 0);
+    buf[bytes.length] = 0x80;
+    const hi = Math.floor(bitLen / 0x100000000);
+    const lo = bitLen >>> 0;
+    const dv = new DataView(buf.buffer);
+    dv.setUint32(total - 8, hi, false);
+    dv.setUint32(total - 4, lo, false);
+
+    let h = H0.slice();
+    const w = new Uint32Array(64);
+    for (let off = 0; off < total; off += 64) {
+      for (let i = 0; i < 16; i++) w[i] = dv.getUint32(off + i*4, false);
+      for (let i = 16; i < 64; i++) {
+        const s0 = rotr(w[i-15],7) ^ rotr(w[i-15],18) ^ (w[i-15] >>> 3);
+        const s1 = rotr(w[i-2],17) ^ rotr(w[i-2],19) ^ (w[i-2] >>> 10);
+        w[i] = (w[i-16] + s0 + w[i-7] + s1) >>> 0;
+      }
+      let [a,b,c,d,e,f,g,hh] = h;
+      for (let i = 0; i < 64; i++) {
+        const s1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);
+        const ch = (e & f) ^ (~e & g);
+        const t1 = (hh + s1 + ch + K[i] + w[i]) >>> 0;
+        const s0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);
+        const maj = (a & b) ^ (a & c) ^ (b & c);
+        const t2 = (s0 + maj) >>> 0;
+        hh = g; g = f; f = e; e = (d + t1) >>> 0;
+        d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+      }
+      h[0]=(h[0]+a)>>>0; h[1]=(h[1]+b)>>>0; h[2]=(h[2]+c)>>>0; h[3]=(h[3]+d)>>>0;
+      h[4]=(h[4]+e)>>>0; h[5]=(h[5]+f)>>>0; h[6]=(h[6]+g)>>>0; h[7]=(h[7]+hh)>>>0;
+    }
+    const out = new Uint8Array(32);
+    const odv = new DataView(out.buffer);
+    for (let i = 0; i < 8; i++) odv.setUint32(i*4, h[i], false);
+    return out;
+  }
+
+  // ---- group.rs, ported: RFC 5114 group 24 ----
+  const P_HEX = "87A8E61DB4B6663CFFBBD19C651959998CEEF608660DD0F25D2CEED4435E3B00E00DF8F1D61957D4FAF7DF4561B2AA3016C3D91134096FAA3BF4296D830E9A7C209E0C6497517ABD5A8A9D306BCF67ED91F9E6725B4758C022E0B1EF4275BF7B6C5BFC11D45F9088B941F54EB1E59BB8BC39A0BF12307F5C4FDB70C581B23F76B63ACAE1CAA6B7902D52526735488A0EF13C6D9A51BFA4AB3AD8347796524D8EF6A167B5A41825D967E144E5140564251CCACB83E6B486F6B3CA3F7971506026C0B857F689962856DED4010ABD0BE621C3A3960A54E710C375F26375D7014103A4B54330C198AF126116D2276E11715F693877FAD7EF09CADB094AE91E1A1597";
+  const Q_HEX = "8CF83642A709A097B447997640129DA299B1A47D1EB3750BA308B0FE64F5FBD3";
+  const G_HEX = "3FB32C9B73134D0B2E77506660EDBD484CA7B18F21EF205407F4793A1A0BA12510DBC15077BE463FFF4FED4AAC0BB555BE3A6C1B0C6B47B1BC3773BF7E8C6F62901228F8C28CBB18A55AE31341000A650196F931C77A57F2DDF463E5E9EC144B777DE62AAAB8A8628AC376D282D6ED3864E67982428EBC831D14348F6F2F9193B5045AF2767164E1DFC967C1FB3F2E55A4BD1BFFE83B9C80D052B985D182EA0ADB2A3B7313D3FE14C8484B1E052588B9B7D2BBD2DF016199ECD06E1557CD0915B3353BBB64E0EC377FD028370DF92B52C7891428CDC67EB6184B523D1DB246C32F63078490F00EF8D647D148D47954515E2327CFEF98C582664B4C0F6CC41659";
+  const H_DOMAIN_SEPARATOR = "veilproof/pedersen-h/v1";
+
+  const P = BigInt("0x" + P_HEX);
+  const Q = BigInt("0x" + Q_HEX);
+  const G = BigInt("0x" + G_HEX);
+
+  function modPow(base, exp, mod) {
+    base = ((base % mod) + mod) % mod;
+    let result = 1n;
+    while (exp > 0n) {
+      if (exp & 1n) result = (result * base) % mod;
+      exp >>= 1n;
+      base = (base * base) % mod;
+    }
+    return result;
+  }
+
+  function subgroupInverse(x) { return modPow(x, Q - 1n, P); }
+
+  const te = new TextEncoder();
+
+  function bigIntToBytesBE(x) {
+    if (x === 0n) return new Uint8Array([0]);
+    let hex = x.toString(16);
+    if (hex.length % 2) hex = "0" + hex;
+    const out = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i*2,2),16);
+    return out;
+  }
+  function bytesToBigInt(bytes) {
+    if (bytes.length === 0) return 0n;
+    let hex = "0x";
+    for (const b of bytes) hex += b.toString(16).padStart(2,"0");
+    return BigInt(hex);
+  }
+  function hex(bytes){ return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join(""); }
+  function bigHex(x){ return hex(bigIntToBytesBE(x)); }
+
+  function computeH() {
+    const digest = sha256(te.encode(H_DOMAIN_SEPARATOR));
+    const s = bytesToBigInt(digest) % Q;
+    return modPow(G, s, P);
+  }
+  const H = computeH();
+
+  function checkElement(x) {
+    if (x <= 0n || x >= P) return false;
+    if (x === 1n) return false;
+    return modPow(x, Q, P) === 1n;
+  }
+
+  function randomScalar() {
+    while (true) {
+      const buf = new Uint8Array(32);
+      crypto.getRandomValues(buf);
+      const candidate = bytesToBigInt(buf);
+      if (candidate < Q) return candidate;
+    }
+  }
+
+  // ---- transcript.rs, ported ----
+  function Transcript(label) {
+    this.parts = [];
+    this._appendBytes(te.encode("veilproof-transcript-v1"));
+    this._appendBytes(te.encode(label));
+  }
+  Transcript.prototype._appendBytes = function (bytes) {
+    const lenBuf = new Uint8Array(8);
+    const dv = new DataView(lenBuf.buffer);
+    dv.setUint32(0, 0, false);
+    dv.setUint32(4, bytes.length, false);
+    this.parts.push(lenBuf, bytes);
+  };
+  Transcript.prototype.appendElement = function (label, x) {
+    this._appendBytes(te.encode(label));
+    this._appendBytes(bigIntToBytesBE(x));
+  };
+  Transcript.prototype.appendU32 = function (label, x) {
+    this._appendBytes(te.encode(label));
+    const b = new Uint8Array(4);
+    new DataView(b.buffer).setUint32(0, x >>> 0, false);
+    this._appendBytes(b);
+  };
+  Transcript.prototype.challengeScalar = function () {
+    let total = 0;
+    for (const p of this.parts) total += p.length;
+    const buf = new Uint8Array(total);
+    let off = 0;
+    for (const p of this.parts) { buf.set(p, off); off += p.length; }
+    const digest = sha256(buf);
+    return bytesToBigInt(digest) % Q;
+  };
+
+  // ---- schnorr.rs, ported ----
+  function schnorrBuildTranscript(y, t) {
+    const tr = new Transcript("schnorr-dlog-v1");
+    tr.appendElement("g", G);
+    tr.appendElement("y", y);
+    tr.appendElement("t", t);
+    return tr;
+  }
+  // xClaimed is the secret behind the public statement y = g^xClaimed.
+  // xUsed is the exponent actually plugged into the response z. An honest
+  // prover has xUsed === xClaimed. The "lie" toggle in the demo sets
+  // xUsed to something else, which produces a z that cannot satisfy the
+  // verification equation for the real y, exactly like a dishonest prover
+  // who does not actually know the secret behind the statement they claim.
+  function schnorrProve(xClaimed, xUsed) {
+    if (xUsed === undefined) xUsed = xClaimed;
+    xClaimed = ((xClaimed % Q) + Q) % Q;
+    xUsed = ((xUsed % Q) + Q) % Q;
+    const y = modPow(G, xClaimed, P);
+    const k = randomScalar();
+    const t = modPow(G, k, P);
+    const c = schnorrBuildTranscript(y, t).challengeScalar();
+    const z = (k + c * xUsed) % Q;
+    return { y, t, c, z };
+  }
+  function schnorrVerify(y, t, z) {
+    if (!checkElement(y) || !checkElement(t)) return false;
+    if (z < 0n || z >= Q) return false;
+    const c = schnorrBuildTranscript(y, t).challengeScalar();
+    const lhs = modPow(G, z, P);
+    const rhs = (t * modPow(y, c, P)) % P;
+    return lhs === rhs;
+  }
+
+  // ---- pedersen.rs, ported ----
+  function commit(m, r) {
+    m = ((m % Q) + Q) % Q;
+    r = ((r % Q) + Q) % Q;
+    return (modPow(G, m, P) * modPow(H, r, P)) % P;
+  }
+
+  // ---- bit_proof.rs, ported ----
+  function bitTargets(c) {
+    const gInv = subgroupInverse(G);
+    const target0 = c;
+    const target1 = (c * gInv) % P;
+    return [target0, target1];
+  }
+  function bitBuildTranscript(c, t0, t1) {
+    const tr = new Transcript("bit-or-proof-v1");
+    tr.appendElement("g", G);
+    tr.appendElement("h", H);
+    tr.appendElement("c", c);
+    tr.appendElement("t0", t0);
+    tr.appendElement("t1", t1);
+    return tr;
+  }
+  function bitProve(b, r) {
+    r = ((r % Q) + Q) % Q;
+    const m = b ? 1n : 0n;
+    const c = commit(m, r);
+    const [target0, target1] = bitTargets(c);
+    let t0, t1, c0, c1, z0, z1;
+    if (!b) {
+      const k0 = randomScalar();
+      t0 = modPow(H, k0, P);
+      z1 = randomScalar();
+      c1 = randomScalar();
+      const target1Inv = subgroupInverse(target1);
+      t1 = (modPow(H, z1, P) * modPow(target1Inv, c1, P)) % P;
+      const chal = bitBuildTranscript(c, t0, t1).challengeScalar();
+      c0 = ((chal + Q) - c1) % Q;
+      z0 = (k0 + c0 * r) % Q;
+    } else {
+      const k1 = randomScalar();
+      t1 = modPow(H, k1, P);
+      z0 = randomScalar();
+      c0 = randomScalar();
+      const target0Inv = subgroupInverse(target0);
+      t0 = (modPow(H, z0, P) * modPow(target0Inv, c0, P)) % P;
+      const chal = bitBuildTranscript(c, t0, t1).challengeScalar();
+      c1 = ((chal + Q) - c0) % Q;
+      z1 = (k1 + c1 * r) % Q;
+    }
+    return { c, t0, t1, c0, c1, z0, z1 };
+  }
+  function bitVerify(proof) {
+    const { c, t0, t1, c0, c1, z0, z1 } = proof;
+    if (!checkElement(c) || !checkElement(t0) || !checkElement(t1)) return false;
+    if ([c0,c1,z0,z1].some(v => v < 0n || v >= Q)) return false;
+    const [target0, target1] = bitTargets(c);
+    const expected = bitBuildTranscript(c, t0, t1).challengeScalar();
+    if ((c0 + c1) % Q !== expected) return false;
+    if (modPow(H, z0, P) !== (t0 * modPow(target0, c0, P)) % P) return false;
+    if (modPow(H, z1, P) !== (t1 * modPow(target1, c1, P)) % P) return false;
+    return true;
+  }
+
+  // ---- range_proof.rs, ported ----
+  function rangeProve(mVal, n) {
+    let m = BigInt(mVal);
+    const bound = 1n << BigInt(n);
+    if (m < 0n || m >= bound) throw new Error("value out of range, no honest proof exists");
+    const bitCommitments = [];
+    const bitProofs = [];
+    let rTotal = 0n;
+    for (let i = 0; i < n; i++) {
+      const bit = ((m >> BigInt(i)) & 1n) === 1n;
+      const ri = randomScalar();
+      const bp = bitProve(bit, ri);
+      bitCommitments.push(bp.c);
+      bitProofs.push(bp);
+      const weight = 1n << BigInt(i);
+      rTotal = (rTotal + ri * weight) % Q;
+    }
+    const c = commit(m, rTotal);
+    return { c, n, bitCommitments, bitProofs };
+  }
+  function rangeVerify(stmt) {
+    const { c, n, bitCommitments, bitProofs } = stmt;
+    if (bitCommitments.length !== n || bitProofs.length !== n) return false;
+    if (!checkElement(c)) return false;
+    let acc = 1n;
+    for (let i = 0; i < n; i++) {
+      if (!checkElement(bitCommitments[i])) return false;
+      if (!bitVerify(bitProofs[i])) return false;
+      const weight = 1n << BigInt(i);
+      acc = (acc * modPow(bitCommitments[i], weight, P)) % P;
+    }
+    return acc === c;
+  }
+
+  // ---- chaum_pedersen.rs, ported ----
+  function dleqBuildTranscript(y1, y2, t1, t2) {
+    const tr = new Transcript("chaum-pedersen-dleq-v1");
+    tr.appendElement("g", G);
+    tr.appendElement("h", H);
+    tr.appendElement("y1", y1);
+    tr.appendElement("y2", y2);
+    tr.appendElement("t1", t1);
+    tr.appendElement("t2", t2);
+    return tr;
+  }
+  function dleqProve(xClaimed, xUsed) {
+    const xc = ((xClaimed % Q) + Q) % Q;
+    const xu = ((xUsed % Q) + Q) % Q;
+    const y1 = modPow(G, xc, P);
+    const y2 = modPow(H, xc, P);
+    const k = randomScalar();
+    const t1 = modPow(G, k, P);
+    const t2 = modPow(H, k, P);
+    const c = dleqBuildTranscript(y1, y2, t1, t2).challengeScalar();
+    const z = (k + c * xu) % Q;
+    return { y1, y2, t1, t2, c, z };
+  }
+  function dleqVerify(p) {
+    if (!checkElement(p.y1) || !checkElement(p.y2) || !checkElement(p.t1) || !checkElement(p.t2)) return false;
+    const c = dleqBuildTranscript(p.y1, p.y2, p.t1, p.t2).challengeScalar();
+    if (modPow(G, p.z, P) !== (p.t1 * modPow(p.y1, c, P)) % P) return false;
+    if (modPow(H, p.z, P) !== (p.t2 * modPow(p.y2, c, P)) % P) return false;
+    return true;
+  }
+
+  // ---- ring.rs, ported (1-of-n membership) ----
+  function ringBuildTranscript(ys, ts) {
+    const tr = new Transcript("ring-1-of-n-v1");
+    tr.appendElement("g", G);
+    tr.appendU32("n", ys.length);
+    ys.forEach((y, i) => { tr.appendU32("yi", i); tr.appendElement("y", y); });
+    ts.forEach((t, i) => { tr.appendU32("ti", i); tr.appendElement("t", t); });
+    return tr;
+  }
+  function ringProve(x, index, ys) {
+    const n = ys.length;
+    const ts = new Array(n), cs = new Array(n), zs = new Array(n);
+    let cOthers = 0n;
+    for (let i = 0; i < n; i++) {
+      if (i === index) continue;
+      const zi = randomScalar();
+      const ci = randomScalar();
+      const yiInv = subgroupInverse(ys[i]);
+      ts[i] = (modPow(G, zi, P) * modPow(yiInv, ci, P)) % P;
+      cs[i] = ci; zs[i] = zi;
+      cOthers = (cOthers + ci) % Q;
+    }
+    const k = randomScalar();
+    ts[index] = modPow(G, k, P);
+    const c = ringBuildTranscript(ys, ts).challengeScalar();
+    const cIndex = ((c + Q) - (cOthers % Q)) % Q;
+    cs[index] = cIndex;
+    zs[index] = (k + cIndex * (((x % Q) + Q) % Q)) % Q;
+    return { ys, ts, cs, zs };
+  }
+  function ringVerify(pr) {
+    const n = pr.ys.length;
+    if (pr.ts.length !== n || pr.cs.length !== n || pr.zs.length !== n) return false;
+    for (const y of pr.ys) if (!checkElement(y)) return false;
+    for (const t of pr.ts) if (!checkElement(t)) return false;
+    const expected = ringBuildTranscript(pr.ys, pr.ts).challengeScalar();
+    let cSum = 0n;
+    for (const c of pr.cs) cSum = (cSum + c) % Q;
+    if (cSum !== expected) return false;
+    for (let i = 0; i < n; i++) {
+      if (modPow(G, pr.zs[i], P) !== (pr.ts[i] * modPow(pr.ys[i], pr.cs[i], P)) % P) return false;
+    }
+    return true;
+  }
+
+  // ---- self-check, matches group::self_check() ----
+  function selfCheck() {
+    const el = document.getElementById("selfCheck");
+    let groupOk = false, proofOk = false;
+    try {
+      groupOk = G !== 1n && G < P && modPow(G, Q, P) === 1n && checkElement(H) && H !== G;
+      const x = 777n;
+      const p = schnorrProve(x);
+      proofOk = schnorrVerify(p.y, p.t, p.z);
+      const dp = dleqProve(777n, 777n);
+      proofOk = proofOk && dleqVerify(dp);
+      const ys = [modPow(G, 5n, P), modPow(G, 6n, P), modPow(G, 7n, P)];
+      proofOk = proofOk && ringVerify(ringProve(6n, 1, ys));
+    } catch (e) { groupOk = false; proofOk = false; }
+    if (groupOk && proofOk) {
+      el.textContent = "self-check passed: g^q mod p == 1, h is in the subgroup, and a sample Schnorr proof verifies.";
+      el.className = "self-check ok";
+    } else {
+      el.textContent = "self-check FAILED: the in-browser group or proof math does not match expectations.";
+      el.className = "self-check bad";
+    }
+    console.assert(groupOk, "group self-check failed");
+    console.assert(proofOk, "sample proof self-check failed");
+  }
+  selfCheck();
+
+  // ---- wire up the dlog demo ----
+  const $ = id => document.getElementById(id);
+
+  $("proveDlogBtn").addEventListener("click", function () {
+    const xInput = $("secretX").value.trim();
+    let x;
+    try { x = BigInt(xInput); } catch (e) { x = 0n; }
+    const lying = $("lieToggle").checked;
+    // Statement y is always g^x, the secret actually displayed. If lying,
+    // the response z is computed as though the secret were x+1 instead,
+    // so it cannot satisfy the verification equation for the real y.
+    const proof = schnorrProve(x, lying ? x + 1n : x);
+    $("dlogOut").style.display = "block";
+    $("dlogY").textContent = bigHex(proof.y);
+    $("dlogT").textContent = bigHex(proof.t);
+    $("dlogC").textContent = bigHex(proof.c);
+    $("dlogZ").textContent = bigHex(proof.z);
+
+    const ok = schnorrVerify(proof.y, proof.t, proof.z);
+    const v = $("dlogVerdict");
+    if (ok) {
+      v.className = "verdict ok";
+      v.textContent = "accept: the proof convinces the verifier the prover knows x behind y, without x ever appearing.";
+    } else {
+      v.className = "verdict bad";
+      v.textContent = "reject: this proof does not establish knowledge of the claimed secret.";
+    }
+
+    const xBytes = hex(bigIntToBytesBE(x));
+    const transcriptHex = bigHex(proof.y) + bigHex(proof.t) + bigHex(proof.c) + bigHex(proof.z);
+    const leaked = xBytes.length > 0 && transcriptHex.includes(xBytes);
+    $("dlogZkNote").textContent = leaked
+      ? "warning: the secret's byte pattern was found in the transcript (this should never happen)."
+      : "checked: the hex bytes of your secret x do not appear anywhere in y, t, c, or z above. That is the zero-knowledge property, made concrete.";
+  });
+
+  // ---- wire up the range demo ----
+  $("proveRangeBtn").addEventListener("click", function () {
+    const raw = parseInt($("rangeVal").value, 10);
+    const val = Math.max(0, Math.min(255, isNaN(raw) ? 0 : raw));
+    const n = 8;
+    let stmt;
+    try {
+      stmt = rangeProve(val, n);
+    } catch (e) {
+      $("rangeVerdict").className = "verdict bad";
+      $("rangeVerdict").textContent = "reject: " + e.message;
+      return;
+    }
+
+    if ($("rangeLieToggle").checked) {
+      // Forge: splice in a freshly generated, otherwise-valid bit proof for
+      // bit 0, breaking the tie back to the original commitment C.
+      const forged = bitProve(true, randomScalar());
+      stmt.bitCommitments[0] = forged.c;
+      stmt.bitProofs[0] = forged;
+    }
+
+    $("rangeOut").style.display = "block";
+    $("rangeC").textContent = bigHex(stmt.c);
+    $("rangeBits").textContent = stmt.bitCommitments
+      .map((c, i) => "bit " + i + ": " + bigHex(c).slice(0, 24) + "...")
+      .join("\n");
+
+    const ok = rangeVerify(stmt);
+    const v = $("rangeVerdict");
+    if (ok) {
+      v.className = "verdict ok";
+      v.textContent = "accept: all 8 bit OR-proofs check out and the weighted product reconstructs C. The value is in [0, 256), never revealed.";
+    } else {
+      v.className = "verdict bad";
+      v.textContent = "reject: the bit proofs or their weighted product no longer match the commitment.";
+    }
+  });
+
+  // ---- wire up the equality (Chaum-Pedersen) demo ----
+  $("proveDleqBtn").addEventListener("click", function () {
+    let x;
+    try { x = BigInt($("dleqX").value.trim()); } catch (e) { x = 0n; }
+    const lying = $("dleqLieToggle").checked;
+    const p = dleqProve(x, lying ? x + 1n : x);
+    $("dleqOut").style.display = "block";
+    $("dleqY1").textContent = bigHex(p.y1);
+    $("dleqY2").textContent = bigHex(p.y2);
+    $("dleqZ").textContent = bigHex(p.z);
+    const ok = dleqVerify(p);
+    const v = $("dleqVerdict");
+    if (ok) {
+      v.className = "verdict ok";
+      v.textContent = "accept: one z satisfies both g^z == t1 y1^c and h^z == t2 y2^c, so y1 and y2 share the same secret x.";
+    } else {
+      v.className = "verdict bad";
+      v.textContent = "reject: the single response cannot satisfy both equations, the two values do not share one exponent.";
+    }
+  });
+
+  // ---- wire up the ring (1-of-n membership) demo ----
+  $("proveRingBtn").addEventListener("click", function () {
+    const sizeRaw = parseInt($("ringSize").value, 10);
+    const size = Math.max(1, Math.min(16, isNaN(sizeRaw) ? 5 : sizeRaw));
+    let idxRaw = parseInt($("ringIndex").value, 10);
+    const index = Math.max(0, Math.min(size - 1, isNaN(idxRaw) ? 0 : idxRaw));
+    const forge = $("ringForgeToggle").checked;
+
+    const secrets = [], ys = [];
+    for (let i = 0; i < size; i++) {
+      const xi = randomScalar();
+      secrets.push(xi);
+      ys.push(modPow(G, xi, P));
+    }
+
+    let pr;
+    if (forge) {
+      // A forger with no secret simulates every branch freely: each equation
+      // can be satisfied, but the shares will not sum to the real challenge.
+      const ts = [], cs = [], zs = [];
+      for (let i = 0; i < size; i++) {
+        const zi = randomScalar(), ci = randomScalar();
+        ts.push((modPow(G, zi, P) * modPow(subgroupInverse(ys[i]), ci, P)) % P);
+        cs.push(ci); zs.push(zi);
+      }
+      pr = { ys, ts, cs, zs };
+    } else {
+      pr = ringProve(secrets[index], index, ys);
+    }
+
+    $("ringOut").style.display = "block";
+    $("ringKeys").textContent = ys
+      .map((y, i) => "key " + i + ": " + bigHex(y).slice(0, 24) + "..." + (!forge && i === index ? "  (secret held here)" : ""))
+      .join("\n");
+
+    const ok = ringVerify(pr);
+    const v = $("ringVerdict");
+    if (ok) {
+      v.className = "verdict ok";
+      v.textContent = "accept: the prover holds a secret for one of the " + size + " keys. The proof does not reveal which.";
+    } else {
+      v.className = "verdict bad";
+      v.textContent = "reject: the challenge shares do not sum to the Fiat-Shamir challenge, no real membership was proven.";
+    }
+  });
+})();
+</script>
 </body>
 </html>

@@ -1,0 +1,22 @@
+[package]
+name = "veilproof"
+version = "0.1.0"
+edition = "2021"
+description = "A teaching-grade zero-knowledge proof toolkit built from scratch in a Schnorr group."
+license = "MIT"
+
+[[bin]]
+name = "veilproof"
+path = "src/main.rs"
+
+[lib]
+name = "veilproof"
+path = "src/lib.rs"
+
+[dependencies]
+num-bigint = "0.4"
+num-integer = "0.1"
+clap = { version = "4", features = ["derive"] }
+
+[profile.release]
+opt-level = 3
