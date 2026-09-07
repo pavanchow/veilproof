@@ -9,6 +9,7 @@
   <meta name="keywords" content="zero-knowledge proof system in Rust, Schnorr proof, Pedersen commitment, Fiat-Shamir, range proof, Chaum-Pedersen equality proof, ring proof, RFC 5114, Pavan Nallamothu, pavanchow, Pavan Nallamothu Rust, pavanchow zero knowledge">
   <link rel="author" href="https://github.com/pavanchow">
   <link rel="canonical" href="https://pavanchow.github.io/veilproof/">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Veilproof: a zero-knowledge proof system in Rust">
   <meta property="og:description" content="A zero-knowledge proof system in Rust, built from scratch with no crypto crates and no elliptic curves. Try a real Schnorr proof and a range proof live in the browser.">
@@ -226,6 +227,7 @@
 
   <div class="hero">
     <div class="glow"></div>
+    <img src="logo.svg" alt="Veilproof logo" width="72" height="72">
     <p class="eyebrow"><span class="dot"></span>Rust &middot; RFC 5114 Schnorr group &middot; no crypto crates &middot; no curves</p>
     <h1>A zero-knowledge proof system<br>you can read end to end.</h1>
     <p class="sub">Veilproof proves you know a secret, or that a hidden number satisfies a property, without ever revealing it. SHA-256, the Fiat-Shamir transform, and every Sigma protocol are written from scratch. No black box. Below is the real math, running live in your browser, animated so you can watch each move land.</p>
@@ -236,6 +238,13 @@
   </div>
 
   <div id="try" class="stage">
+
+    <details style="margin:0 0 24px;border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:0 18px;">
+      <summary style="cursor:pointer;padding:15px 0;font-weight:650;color:var(--ink);">How to use this playground</summary>
+      <div style="padding:0 0 16px;color:var(--muted);font-size:15px;line-height:1.6;">
+        Each card below is one real Sigma protocol running live in your browser. Enter a secret (a discrete log, a value in range, or a shared exponent), press <em>Generate proof</em>, and watch the three moves cross the channel: the prover's commitment, the Fiat-Shamir challenge derived by hashing the transcript, and the response the verifier checks. A green verdict means the verification equation held; the secret itself never appears in what is sent. Flip a <em>lie</em> toggle to prove with the wrong secret or forge a bit, and watch the verifier reject it. This is the same math as the Rust CLI, ported to JavaScript.
+      </div>
+    </details>
 
     <div class="card" data-card>
       <span class="tag">Simulation 1 of 4</span>

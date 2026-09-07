@@ -1,3 +1,5 @@
+<img src="docs/logo.svg" alt="Veilproof logo" width="96">
+
 # Veilproof
 
 **A zero-knowledge proof system in Rust that you can read end to end, no black box, no elliptic curves, no crypto crates.**
