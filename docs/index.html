@@ -210,6 +210,14 @@
 
     pre.code{background:#15161c;color:#ececf4;border-radius:14px;padding:20px 22px;font-family:var(--mono);font-size:13.5px;overflow-x:auto;max-width:640px;margin:40px auto 0}
     pre.code .c{color:#8a8d9a}
+    .term{max-width:720px;margin:40px auto 0;background:#0f0c17;border:1px solid #2a2140;border-radius:16px;overflow:hidden}
+    .term .tbar{display:flex;gap:7px;padding:12px 16px;border-bottom:1px solid #221a35}
+    .term .tbar i{width:11px;height:11px;border-radius:50%;background:#3a2f52}
+    .term pre{margin:0;color:#e8e6f4;padding:18px 20px;font-family:var(--mono);font-size:12.5px;line-height:1.6;overflow-x:auto;white-space:pre}
+    .term .p{color:#9b6ef3}
+    .term .c{color:#a99bd8}
+    .term .ok{color:#5fe0a0;font-weight:600}
+    .term .dim{color:#7d7397}
 
     footer{padding:64px 0;border-top:1px solid var(--line);text-align:center;color:var(--muted)}
     footer .name{color:var(--ink);font-weight:600}
@@ -219,7 +227,7 @@
   <nav><div class="row">
     <div class="brand"><img src="logo.svg" class="brandlogo" alt="" width="22" height="22">Veilproof</div>
     <div class="links">
-      <a href="#try">Demo</a><a href="#how">How it works</a><a href="#source">Source</a>
+      <a href="#try">Demo</a><a href="#how">How it works</a><a href="#compare">Compare</a><a href="#source">Source</a>
       <a class="gh" href="https://github.com/pavanchow/veilproof">GitHub</a>
       <span class="v">v0.1.0</span>
     </div>
@@ -301,7 +309,7 @@
       <h3>Range proof: prove a number is in range, without saying what it is</h3>
       <p class="desc">Pick a secret value from 0 to 255. The page commits to it with Pedersen commitments, decomposes it into 8 bits, proves every bit is honestly 0 or 1 with an OR-proof, and ties the bits back to the commitment. The value itself never leaves its sealed commitment.</p>
       <div class="row2">
-        <div class="field"><label for="rangeVal">Secret value (0&ndash;255)</label><input type="number" id="rangeVal" min="0" max="255" value="173"></div>
+        <div class="field"><label for="rangeVal">Secret value (0 to 255)</label><input type="number" id="rangeVal" min="0" max="255" value="173"></div>
         <div class="field"><label for="&nbsp;">&nbsp;</label>
           <label class="toggle"><input type="checkbox" id="rangeLieToggle"> lie: forge a bit after committing</label>
         </div>
@@ -376,7 +384,7 @@
       <h3>Ring proof: prove you are one of the group, not which one</h3>
       <p class="desc">A ring of public keys is generated and the page proves knowledge of the secret behind exactly one of them, without revealing which. The proof has the same shape at every position, so it cannot leak the index, not even in this visualization.</p>
       <div class="row2">
-        <div class="field"><label for="ringSize">Ring size (1&ndash;16)</label><input type="number" id="ringSize" min="1" max="16" value="5"></div>
+        <div class="field"><label for="ringSize">Ring size (1 to 16)</label><input type="number" id="ringSize" min="1" max="16" value="5"></div>
         <div class="field"><label for="ringIndex">Your position</label><input type="number" id="ringIndex" min="0" max="15" value="2"></div>
       </div>
       <div class="row2">
@@ -415,12 +423,24 @@
     </div>
   </section>
 
+  <section id="compare">
+    <h2>How it compares</h2>
+    <p class="lead">Veilproof solves a deliberately smaller problem than a general proving framework, and that is the point. The comparison is about comprehensibility and footprint, not capability.</p>
+    <div class="rows">
+      <div class="r"><b>Arkworks</b><p>Builds succinct proofs over arbitrary circuits on elliptic curves and pairings. Powerful and necessarily large, spanning many crates. Best for production succinct proofs over general circuits.</p></div>
+      <div class="r"><b>Circom + snarkjs</b><p>A circuit compiler plus a JavaScript toolchain, elliptic curves and pairings, usually with a trusted setup. Best for production circuits and dapps.</p></div>
+      <div class="r"><b>Veilproof</b><p>A fixed menu of Sigma protocols in a Schnorr group over a finite field, no curves, no trusted setup, three dependencies. About 2,800 lines with tests, readable in one sitting. Best for learning how zero-knowledge proofs actually work.</p></div>
+      <div class="r"><b>Not for production</b><p>Teaching-grade, not audited, not reviewed outside this project. It makes convenience choices a real deployment should not inherit blindly, most notably the derivation of the second Pedersen generator h. Do not use it to protect anything that matters.</p></div>
+    </div>
+  </section>
+
   <section id="source">
     <h2>Same math, two surfaces.</h2>
     <div class="rows">
       <div class="r"><b>CLI &amp; library</b><p><code>veilproof prove-dlog</code>, <code>verify-dlog</code>, and <code>demo</code>, plus a plain Rust library with typed errors, never a panic.</p></div>
       <div class="r"><b>Browser</b><p>The demo above is the same p, q, g, h, the same hand-written SHA-256, and the same Fiat-Shamir logic, ported to JavaScript with native BigInt.</p></div>
       <div class="r"><b>Tests</b><p><code>cargo test</code> checks completeness, soundness against wrong witnesses and tampered bytes, determinism, and that the witness never appears in a serialized proof.</p></div>
+      <div class="r"><b>MCP server</b><p>Exposes the verifiers (<code>verify_dlog</code>, <code>verify_dleq</code>, <code>verify_range</code>, <code>verify_ring</code>) as tools, so an agent can produce a proof and then mathematically verify its own output against the Rust binary.</p></div>
     </div>
     <pre class="code"><span class="c"># prove knowledge of a secret</span>
 veilproof prove-dlog --secret 424242
@@ -430,6 +450,30 @@ veilproof verify-dlog --statement &lt;hex&gt; --proof &lt;hex&gt;
 
 <span class="c"># run the full range-proof demo</span>
 veilproof demo</pre>
+    <div class="term">
+      <div class="tbar"><i></i><i></i><i></i></div>
+<pre><span class="p">$</span> veilproof demo
+veilproof demo: proving a committed value lies in a range, without revealing it
+
+secret value: withheld (that is the point)
+public claim: the committed value fits in 16 bits, i.e. [0, 2^16)
+
+commitment C = g^m * h^r mod p:
+  12ef947a73b4b599585e1597ffc625e3a10aa0385aafa1bdd077fd52381bd2f4<span class="dim">...</span>
+blinding factor r: withheld (not printed, this is what makes C hiding)
+
+range proof: 16 bit commitments, each with an OR-proof of being 0 or 1
+  bit  0 commitment: 73909ca5ac24f7a8<span class="dim">...</span>
+  bit  1 commitment: 09d0367bf83bc8a8<span class="dim">...</span>
+  <span class="dim">... 14 more ...</span>
+  bit 15 commitment: 2f2f53e91c799158<span class="dim">...</span>
+
+verifier recomputes the weighted product of bit commitments,
+checks it equals C, and checks every bit OR-proof: <span class="ok">ACCEPT</span>
+
+<span class="p">$</span> veilproof verify-dlog --statement &lt;hex&gt; --proof &lt;hex&gt;
+<span class="ok">accept</span></pre>
+    </div>
   </section>
 
   <noscript>
