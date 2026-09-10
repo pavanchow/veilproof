@@ -6,6 +6,8 @@ Veilproof is a zero-knowledge proof system written from scratch in Rust, with no
 
 **[Live demo](https://pavanchow.github.io/veilproof/)** · MIT licensed · written in Rust · teaching-grade, not audited
 
+Built from scratch by [Pavan Nallamothu](https://pavanchow.github.io/) ([LinkedIn](https://www.linkedin.com/in/pavanchow/), [GitHub](https://github.com/pavanchow)).
+
 Veilproof is a small, from-scratch toolkit for proving you know a secret, or that a hidden number satisfies a property, without ever revealing the secret itself. Every piece of cryptography in it, the modular arithmetic, the hash function, the challenge derivation, the proof composition, is written out in the open so a reader can follow exactly why a verifier is convinced, and exactly why a liar gets caught.
 
 ## A Rust Schnorr proof from scratch
